@@ -1,0 +1,27 @@
+[
+  {
+    "token": "ETH",
+    "volume": 0.3,
+    "entry_condition": 0,
+    "exit_condition": 100
+  },
+  {
+    "token": "ETH",
+    "volume": 0.2,
+    "entry_condition": 10,
+    "exit_condition": 70,
+    
+    "id": "overlay-220930_172900"
+  },
+  {
+    "token": "ETH",
+    "volume": 0.1,
+    "entry_condition": 20,
+    "exit_condition": 60,
+    
+    "id": "already_entered_position",
+    "num_entered": 1,
+    "balance_bm": 0.1,
+    "balance_kr": 0.1
+  }
+]

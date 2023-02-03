@@ -1,0 +1,16 @@
+{
+  "binance": {
+    "api": "YOUR_BINANCE_API_KEY",
+    "secret": "YOUR_BINANCE_SECRET_KEY"
+  },
+  "upbit": [
+    {
+      "api": "YOUR_FIRST_UPBIT_API_KEY",
+      "secret": "YOUR_FIRST_UPBIT_SECRET_KEY"
+    },
+    {
+      "api": "ADD_MORE_UPBIT_API_KEY_IF_YOU_WANT",
+      "secret": "ADD_MORE_UPBIT_SECRET_KEY_IF_YOU_WANT"
+    }
+  ]
+}
