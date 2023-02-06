@@ -1,37 +1,28 @@
 from decimal import Decimal
 from api_trading_script import place_order, cancel_order, query_open_order
-
+from pprint import pprint
 
 '''
-Binance는 Cancel에서 symbol 필수이기 때문에 base_asset, quote_asset을 인풋해야함
 Bybit V2 는 cancel, query open order 에서 symbol이 필수이기 때문에 base_asset, quote_asset을 인풋해야함 
+
+Binance는 base_asset 을 None으로 주면 전체 open order 조회. symbol로 따로 조회할 필요 없이....   단 취소는 base_asset 필수 
+OKX 는  base_asset 을 None으로 주면 전체 open order 조회. symbol로 따로 조회할 필요 없이
 '''
 
-exchange = 'upt'  # 'byb', 'bnc', 'okx, 'upt'
-# instrument_type = 'spot' # 'spot', 'perp'
+exchange = 'byb'  # 'byb', 'bnc', 'okx, 'upt'
 
-base_asset = 'btc'
+base_asset = 'eth' # 'eth'
 quote_asset = 'usdt' # 'krw', 'usdt', 'busd'
-
-# side = 'buy'  # 'sell', 'buy'
-# order_type = 'limit'  # 'market', 'limit'
-#
-# qty = Decimal('0.01')
-# price = Decimal('1_900_000')    # upbit인 경우 KRW 기준
-
-# place_order(exchange=exchange,instrument_type=instrument_type,base_asset=base_asset,quote_asset=quote_asset,side=side,qty=qty,order_type=order_type,price=price)
-
 
 
 if __name__ == "__main__":
+    if base_asset is None:
+        print('Base_asset이 None이면 전체 Open Order 조회입니다. (단, OKX만 가능)')
+        quote_asset = None
 
-    place_order(
+    result = query_open_order(
         exchange=exchange,
-        instrument_type=instrument_type,
         base_asset=base_asset,
         quote_asset=quote_asset,
-        side=side,
-        qty=qty,
-        order_type=order_type,
-        price=price
     )
+    pprint(result)

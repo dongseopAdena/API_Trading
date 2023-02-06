@@ -107,7 +107,7 @@ def place_order(
         )
 
 
-    return pprint(result)
+    return result
 
 
 
@@ -136,14 +136,21 @@ def cancel_order(
     if exchange == 'upt':
         result = cancel_order_upbit()
 
-    return pprint(result)
+    return result
 
 
 
-def query_open_order(exchange):
+def query_open_order(
+    exchange : str,
+    base_asset : str | None = None,
+    quote_asset : str | None = None
+):
 
     if exchange == 'bnc':
-        result = open_order_binance()
+        result = open_order_binance(
+            base_asset,
+            quote_asset,
+        )
 
     if exchange == 'byb':  # byb V2 는 Symbol 이 필수임.
         result = open_order_bybit(
@@ -153,12 +160,15 @@ def query_open_order(exchange):
         )
 
     if exchange == 'okx':
-        result = open_order_okx()
+        result = open_order_okx(
+            base_asset,
+            quote_asset,
+        )
 
     if exchange == 'upt':
         result = open_order_upbit()
 
-    return pprint(result)
+    return result
 
 
 #######################
@@ -179,9 +189,7 @@ def place_order_okx_perpetual(
             method='get',
             endpoint='/api/v5/public/instruments',
             params={
-
                 'instType': 'SWAP',
-
             },
             require_signature=True,
         )
@@ -245,44 +253,126 @@ def place_order_okx_spot(
 
     return result
 
-def open_order_okx():
+def open_order_okx(
+        base_asset: str | None = None,
+        quote_asset: str | None = None,
+):
 
-    res = okx.request(
-        method='get',
-        endpoint='/api/v5/trade/orders-pending',
-        params={},
-    require_signature = True,
-    ).json()
+    if base_asset:
+        params_perp = {
+                'instId': f'{base_asset.upper()}-{quote_asset.upper()}-SWAP'
+        }
+        params_spot= {
+            'instId': f'{base_asset.upper()}-{quote_asset.upper()}'
+        },
 
-    result = res['data']
+        res_ = okx.request(
+            method='get',
+            endpoint='/api/v5/trade/orders-pending',
+            params=params_perp,
+            require_signature=True,
+        ).json()
+
+        result = res_['data']
+
+        for i in range(len(result)):
+            result[i]['instrument_type'] = 'perp'
+
+        res_spot_ = okx.request(
+            method='get',
+            endpoint='/api/v5/trade/orders-pending',
+            params=params_spot,
+            require_signature = True,
+        ).json()
+
+        result_spot = res_spot_['data']
+
+        for i in range(len(result_spot)):
+            result_spot[i]['instrument_type'] = 'spot'
+
+        result.extend(result_spot)
+
+    else:
+        params = {}
+        result_ = okx.request(
+            method='get',
+            endpoint='/api/v5/trade/orders-pending',
+            params=params,
+            require_signature=True,
+        ).json()
+        result = result_['data']
+
 
     return result
 
-def cancel_order_okx():
+def cancel_order_okx(
+        base_asset: str | None = None,
+        quote_asset: str | None = None,
+):
 
-    open_order_res_ = okx.request(
-        method='get',
-        endpoint='/api/v5/trade/orders-pending',
-        params={},
-    require_signature = True,
-    ).json()
-
-    open_order_res = open_order_res_['data']
-
-    result = []
-    for i in range(len(open_order_res)):
-
-        res = okx.request(
-            method='post',
-            endpoint='/api/v5/trade/cancel-order',
-            params = {
-                'instId': open_order_res[i]['instId'],
-                'ordId': open_order_res[i]['ordId']
-                     },
-        require_signature=True
+    if base_asset:
+        open_order_res_ = okx.request(
+            method='get',
+            endpoint='/api/v5/trade/orders-pending',
+            params={
+                    'instId': f'{base_asset.upper()}-{quote_asset.upper()}-SWAP'
+            },
+            require_signature = True,
         ).json()
 
-        result.append(res)
+        open_order_res = open_order_res_['data']
+
+
+        open_order_res_spot_ = okx.request(
+            method='get',
+            endpoint='/api/v5/trade/orders-pending',
+            params={
+                    'instId': f'{base_asset.upper()}-{quote_asset.upper()}'
+            },
+            require_signature = True,
+        ).json()
+
+        open_order_res_spot = open_order_res_spot_['data']
+
+        open_order_res.extend(open_order_res_spot)
+
+
+        result = []
+        for i in range(len(open_order_res)):
+
+            res = okx.request(
+                method='post',
+                endpoint='/api/v5/trade/cancel-order',
+                params = {
+                    'instId': open_order_res[i]['instId'],
+                    'ordId': open_order_res[i]['ordId']
+                         },
+            require_signature=True
+            ).json()
+
+            result.append(res)
+    else:
+        open_order_res_ = okx.request(
+            method='get',
+            endpoint='/api/v5/trade/orders-pending',
+            params={},
+            require_signature = True,
+        ).json()
+
+        open_order_res = open_order_res_['data']
+
+        result = []
+        for i in range(len(open_order_res)):
+
+            res = okx.request(
+                method='post',
+                endpoint='/api/v5/trade/cancel-order',
+                params = {
+                    'instId': open_order_res[i]['instId'],
+                    'ordId': open_order_res[i]['ordId']
+                         },
+            require_signature=True
+            ).json()
 
 
     return result
@@ -372,21 +462,45 @@ def place_order_bybit_spot(
 
 
 def open_order_bybit(
-        base_asset: str,
-        quote_asset: str,
+        base_asset: str | None = None,
+        quote_asset: str | None = None,
 ):
 
-    result = byb.request(
+    result_ = byb.request(
         method='get',
         endpoint='/private/linear/order/search',
         params={'symbol':f'{base_asset.upper()}{quote_asset.upper()}'},
         require_signature=True
     ).json()
 
+    result = result_['result']
+
+    for i in range(len(result)):
+        result[i]['instrument_type'] = 'perp'
+
+
+    result_spot_ = byb.request(
+        method='get',
+        endpoint='/spot/v3/private/open-orders',
+        params={'symbol': f'{base_asset.upper()}{quote_asset.upper()}'},
+        require_signature=True
+    ).json()
+
+    result_spot = result_spot_['result']['list']
+
+    for i in range(len(result_spot)):
+        result_spot[i]['instrument_type'] = 'spot'
+
+    result.extend(result_spot)
+
     return result
 
 
-def cancel_order_bybit():
+def cancel_order_bybit(
+        base_asset: str| None = None,
+        quote_asset: str | None = None,
+
+):
 
     open_order_res_ = byb.request(
         method='get',
@@ -411,7 +525,34 @@ def cancel_order_bybit():
 
         result.append(res)
 
+
+    open_order_res_spot_ = byb.request(
+        method='get',
+        endpoint='/spot/v3/private/open-orders',
+        params={'symbol': f'{base_asset.upper()}{quote_asset.upper()}'},
+        require_signature=True
+    ).json()
+
+    open_order_res_spot = open_order_res_spot_['result']['list']
+
+    result_spot = []
+    for i in range(len(open_order_res_spot)):
+
+        res_spot = byb.request(
+            method='post',
+            endpoint='/spot/v3/private/cancel-orders-by-ids',
+            params={'orderIds': open_order_res_spot[i]['orderId'],
+                    },
+            require_signature=True
+        ).json()
+
+        result_spot.append(res_spot)
+
+    result.extend(result_spot)
+
     return result
+
+
 #######################
 ######## BINANCE ####################
 #######################
@@ -493,14 +634,59 @@ def place_order_binance_spot(
     return result
 
 
-def open_order_binance():
+def open_order_binance(
+        base_asset: str | None = None,
+        quote_asset: str | None = None,
 
-    result = bnc_futures.request(
+):
+    if base_asset:
+        result = bnc_futures.request(
+                method='get',
+                endpoint='/fapi/v1/openOrders',
+                params={'symbol':f'{base_asset.upper()}{quote_asset.upper()}'},
+                require_signature=True
+            ).json()
+
+        for i in range(len(result)):
+            result[i]['instrument_type'] = 'perp'
+
+        result_spot = bnc_spot.request(
+                method='get',
+                endpoint='/api/v3/openOrders',
+                params={'symbol':f'{base_asset.upper()}{quote_asset.upper()}'},
+                require_signature=True
+            ).json()
+
+        for i in range(len(result_spot)):
+            result_spot[i]['instrument_type'] = 'spot'
+
+        result.extend(result_spot)
+
+    else:
+        result = bnc_futures.request(
             method='get',
             endpoint='/fapi/v1/openOrders',
-            # params= params_bnc,
+            params={},
             require_signature=True
         ).json()
+
+        for i in range(len(result)):
+            result[i]['instrument_type'] = 'perp'
+
+        result_spot = bnc_spot.request(
+            method='get',
+            endpoint='/api/v3/openOrders',
+            params={},
+            require_signature=True
+        ).json()
+
+        for i in range(len(result_spot)):
+            result_spot[i]['instrument_type'] = 'spot'
+
+        result.extend(result_spot)
+
+
+    return result
 
 def cancel_order_binance(
         base_asset: str,
@@ -515,6 +701,7 @@ def cancel_order_binance(
         ).json()
 
     result = []
+
     for i in range(len(open_order_res)):
         res = bnc_futures.request(
                 method='delete',
@@ -526,7 +713,29 @@ def cancel_order_binance(
 
         result.append(res)
 
-        return result
+    result_spot = []
+    open_order_spot_res = bnc_spot.request(
+        method='get',
+        endpoint='/api/v3/openOrders',
+        # params= params_bnc,
+        require_signature=True
+    ).json()
+
+    for i in range(len(open_order_spot_res)):
+        res_spot = bnc_spot.request(
+                method='delete',
+                endpoint='/api/v3/order',
+                params= {'symbol': f'{base_asset.upper()}{quote_asset.upper()}',
+                                   'orderId': open_order_spot_res[i]['orderId']},
+                require_signature=True
+            ).json()
+
+        result_spot.append(res_spot)
+
+    result.extend(result_spot)
+
+
+    return result
 
 
 def place_order_upbit_spot(
