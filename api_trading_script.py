@@ -109,19 +109,54 @@ def place_order(
 
     return pprint(result)
 
-def cancel_order(exchange)
+
+
+def cancel_order(
+    exchange : str,
+    base_asset : str | None = None,
+    quote_asset : str | None = None
+):
 
     if exchange == 'bnc':
-        result = cancel_order_binance()
+        result = cancel_order_binance(
+            base_asset,
+            quote_asset,
+
+        )
 
     if exchange == 'byb':
-        result = cancel_order_bybit()
+        result = cancel_order_bybit(
+            base_asset,
+            quote_asset,
+        )
 
     if exchange == 'okx':
         result = cancel_order_okx()
 
     if exchange == 'upt':
         result = cancel_order_upbit()
+
+    return pprint(result)
+
+
+
+def query_open_order(exchange):
+
+    if exchange == 'bnc':
+        result = open_order_binance()
+
+    if exchange == 'byb':  # byb V2 는 Symbol 이 필수임.
+        result = open_order_bybit(
+            base_asset,
+            quote_asset,
+
+        )
+
+    if exchange == 'okx':
+        result = open_order_okx()
+
+    if exchange == 'upt':
+        result = open_order_upbit()
 
     return pprint(result)
 
@@ -336,6 +371,47 @@ def place_order_bybit_spot(
 
 
 
+def open_order_bybit(
+        base_asset: str,
+        quote_asset: str,
+):
+
+    result = byb.request(
+        method='get',
+        endpoint='/private/linear/order/search',
+        params={'symbol':f'{base_asset.upper()}{quote_asset.upper()}'},
+        require_signature=True
+    ).json()
+
+    return result
+
+
+def cancel_order_bybit():
+
+    open_order_res_ = byb.request(
+        method='get',
+        endpoint='/private/linear/order/search',
+        params={'symbol':f'{base_asset.upper()}{quote_asset.upper()}'},
+        require_signature=True
+    ).json()
+
+    open_order_res = open_order_res_['result']
+
+    result = []
+    for i in range(len(open_order_res)):
+
+        res = byb.request(
+            method='post',
+            endpoint='/private/linear/order/cancel',
+            params={'symbol':f'{base_asset.upper()}{quote_asset.upper()}',
+                    'order_id': open_order_res[i]['order_id'],
+                    },
+            require_signature=True
+        ).json()
+
+        result.append(res)
+
+    return result
 #######################
 ######## BINANCE ####################
 #######################
@@ -417,6 +493,40 @@ def place_order_binance_spot(
     return result
 
 
+def open_order_binance():
+
+    result = bnc_futures.request(
+            method='get',
+            endpoint='/fapi/v1/openOrders',
+            # params= params_bnc,
+            require_signature=True
+        ).json()
+
+def cancel_order_binance(
+        base_asset: str,
+        quote_asset: str,
+):
+
+    open_order_res = bnc_futures.request(
+            method='get',
+            endpoint='/fapi/v1/openOrders',
+            # params= params_bnc,
+            require_signature=True
+        ).json()
+
+    result = []
+    for i in range(len(open_order_res)):
+        res = bnc_futures.request(
+                method='delete',
+                endpoint='/fapi/v1/order',
+                params= {'symbol': f'{base_asset.upper()}{quote_asset.upper()}',
+                                   'orderId': open_order_res[i]['orderId']},
+                require_signature=True
+            ).json()
+
+        result.append(res)
+
+        return result
 
 
 def place_order_upbit_spot(

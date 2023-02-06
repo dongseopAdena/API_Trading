@@ -1,9 +1,8 @@
 from decimal import Decimal
 from api_trading_script import place_order
 
-exchange = 'okx'             # 'byb', 'bnc', 'okx, 'upt'
-instrument_type = 'spot'     # 'spot', 'perp'
-
+exchange = 'byb'             # 'byb', 'bnc', 'okx, 'upt'
+instrument_type = 'perp'     # 'spot', 'perp'
 base_asset = 'eth'
 quote_asset = 'USDT'         #'krw', 'usdt', 'busd'
 
