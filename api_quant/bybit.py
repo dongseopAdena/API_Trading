@@ -1,13 +1,15 @@
 import hashlib
 import hmac
+import json
 import time
 from typing import Any
+from urllib.parse import urlencode
 
 import aiohttp
 import requests
 
 try:
-    from util import logger
+    from project_logger import logger
 except ModuleNotFoundError:
     import logging
 
@@ -46,28 +48,52 @@ class ApiClient:
             endpoint: str,
             params: dict[str, Any] | None = None,
             require_signature: bool = False,
+            recv_window: int = 5000,
     ) -> requests.Response:
         if params is None:
             params = {}
 
-        if require_signature:
-            params['api_key'] = self._api_key
-            params['timestamp'] = int(time.time() * 1000)
+        headers = {}
 
-            query_string = '&'.join(
-                [str(k) + '=' + str(v) for k, v in sorted(params.items()) if (k != 'sign') and (v is not None)]
-            )
-            params['sign'] = hmac.new(
+        if require_signature:
+            timestamp = int(time.time() * 1000)
+
+            if len(params) == 0:
+                prehash = f'{timestamp}{self._api_key}{recv_window}'
+            elif method.upper() == 'GET':
+                query_string = urlencode(params)
+                prehash = f'{timestamp}{self._api_key}{recv_window}{query_string}'
+            else:
+                prehash = f'{timestamp}{self._api_key}{recv_window}{json.dumps(params)}'
+
+            sign = hmac.new(
                 self._secret_key.encode(),
-                msg=query_string.encode(),
-                digestmod=hashlib.sha256
+                msg=prehash.encode(),
+                digestmod=hashlib.sha256,
             ).hexdigest()
 
-        return requests.request(
-            method=method,
-            url=self._base_url + endpoint,
-            params={k: str(params[k]) for k in params},
-        )
+            headers |= {
+                # 'X-BAPI-SIGN-TYPE': '2',
+                'X-BAPI-SIGN': sign,
+                'X-BAPI-API-KEY': self._api_key,
+                'X-BAPI-TIMESTAMP': str(timestamp),
+                'X-BAPI-RECV-WINDOW': str(recv_window),
+            }
+
+        if method.upper() == 'GET':
+            return requests.request(
+                method=method,
+                url=self._base_url + endpoint,
+                headers=headers,
+                params={k: str(params[k]) for k in params},
+            )
+        else:
+            return requests.request(
+                method=method,
+                url=self._base_url + endpoint,
+                headers=headers,
+                json={k: str(params[k]) for k in params},
+            )
 
     async def request_async(
             self,
@@ -75,31 +101,56 @@ class ApiClient:
             endpoint: str,
             params: dict[str, Any] | None = None,
             require_signature: bool = False,
+            recv_window: int = 5000,
     ):
+        if params is None:
+            params = {}
+
+        headers = {}
+
         if require_signature:
-            if params is None:
-                params = {}
+            timestamp = int(time.time() * 1000)
 
-            params['api_key'] = self._api_key
-            params['timestamp'] = int(time.time() * 1000)
+            if method.upper() == 'GET':
+                query_string = urlencode(params)
+                prehash = f'{timestamp}{self._api_key}{recv_window}{query_string}'
+            else:
+                prehash = f'{timestamp}{self._api_key}{recv_window}{json.dumps(params)}'
 
-            query_string = '&'.join(
-                [str(k) + '=' + str(v) for k, v in sorted(params.items()) if (k != 'sign') and (v is not None)]
-            )
-            params['sign'] = hmac.new(
+            sign = hmac.new(
                 self._secret_key.encode(),
-                msg=query_string.encode(),
-                digestmod=hashlib.sha256
+                msg=prehash.encode(),
+                digestmod=hashlib.sha256,
             ).hexdigest()
 
-        async with aiohttp.request(
-                method=method,
-                url=self._base_url + endpoint,
-                params={k: str(params[k]) for k in params},
-        ) as res:
-            # TODO : Error handling
-            # TODO : Is it ok to return JSON directly?
-            return await res.json()
+            headers |= {
+                'X-BAPI-SIGN-TYPE': '2',
+                'X-BAPI-SIGN': sign,
+                'X-BAPI-API-KEY': self._api_key,
+                'X-BAPI-TIMESTAMP': str(timestamp),
+                'X-BAPI-RECV-WINDOW': str(recv_window),
+            }
+
+        if method.upper() == 'GET':
+            async with aiohttp.request(
+                    method=method,
+                    url=self._base_url + endpoint,
+                    headers=headers,
+                    params={k: str(params[k]) for k in params},
+            ) as res:
+                # TODO : Error handling
+                # TODO : Is it ok to return JSON directly?
+                return await res.json()
+        else:
+            async with aiohttp.request(
+                    method=method,
+                    url=self._base_url + endpoint,
+                    headers=headers,
+                    json={k: str(params[k]) for k in params},
+            ) as res:
+                # TODO : Error handling
+                # TODO : Is it ok to return JSON directly?
+                return await res.json()
 
 
 class TestnetApiClient(ApiClient):

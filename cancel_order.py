@@ -11,13 +11,13 @@ OKX 는 모든
 '''
 
 exchange = 'byb'  # 'byb', 'bnc', 'okx, 'upt'
-base_asset = 'eth'   # 'eth'
+base_asset = 'btc'   # 'eth'
 quote_asset = 'usdt' # 'krw', 'usdt', 'busd'
 
 
 if __name__ == "__main__":
     if base_asset is None:
-        print('Base_asset이 None이면 전체 모든 open order 취소입니다. (단, OKX만 가능)')
+        print('Base_asset이 None이면 전체 미체결된 모든 Open Order에 대한 취소입니다. (단, OKX만 가능)')
         quote_asset = None
 
     result = cancel_order(

@@ -11,13 +11,13 @@ OKX 는  base_asset 을 None으로 주면 전체 open order 조회. symbol로 �
 
 exchange = 'byb'  # 'byb', 'bnc', 'okx, 'upt'
 
-base_asset = 'eth' # 'eth'
+base_asset = 'btc' # 'eth'
 quote_asset = 'usdt' # 'krw', 'usdt', 'busd'
 
 
 if __name__ == "__main__":
     if base_asset is None:
-        print('Base_asset이 None이면 전체 Open Order 조회입니다. (단, OKX만 가능)')
+        print('Base_asset이 None이면 모든 종목의 Open Order 조회입니다. (단, OKX, Binance만 가능)')
         quote_asset = None
 
     result = query_open_order(
@@ -25,4 +25,5 @@ if __name__ == "__main__":
         base_asset=base_asset,
         quote_asset=quote_asset,
     )
+
     pprint(result)
